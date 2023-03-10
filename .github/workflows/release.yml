@@ -1,43 +1,46 @@
-name: Build and Release Exe
-
+name: Build and Release Installer
 on:
   push:
     branches:
       - master
-
 jobs:
   build:
     runs-on: windows-latest
-
     steps:
-    - uses: actions/checkout@v2
-
-    - name: Setup MSBuild.exe path
-      uses: microsoft/setup-msbuild@v1.0.2
-
-    - name: NuGet restore
-      run: nuget restore "Zacks Outlining Tool.sln"
-
-    - name: Build solution
-      run: msbuild /p:Configuration=Release /t:Rebuild "Zacks Outlining Tool.sln"
-
-    - name: Create Release
-      id: create_release
-      uses: actions/create-release@v1.0.1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        tag_name: ${{ github.ref }}
-        release_name: Release ${{ github.ref }}
-        draft: false
-        prerelease: false
-
-    - name: Upload Release Asset
-      uses: actions/upload-release-asset@v1.0.2
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: ./Zacks Outlining Tool/bin/Release/Zacks Outlining Tool.exe
-        asset_name: Zacks Outlining Tool.exe
-        asset_content_type: application/octet-stream
+      - name: Checkout code
+        uses: actions/checkout@v2
+      - name: Setup .NET Framework
+        uses: Microsoft/setup-framework@v1
+        with:
+          dotnet-version: '4.8.1'
+      - name: Restore NuGet packages
+        run: nuget restore
+      - name: Build application
+        run: msbuild /p:Configuration=Release /t:Rebuild
+      - name: Download WiX Toolset
+        uses: jquintozamora/action-download-artifact@v2
+        with:
+          name: wix
+          repository: wixtoolset/wix3
+          pattern: 'wix*.zip'
+        id: wix
+      - name: Extract WiX Toolset
+        run: |
+          7z x ${{ steps.wix.outputs.artifact }} -y -oC:\wix
+          setx Path "%PATH%;C:\wix\bin"
+      - name: Create installer
+        run: candle Product.wxs && light Product.wixobj -o ZacksOutliningToolInstaller.msi
+      - name: Create Release
+        uses: actions/create-release@v1
+        with:
+          tag_name: v1.0.0
+          release_name: Release v1.0.0
+          draft: false
+          prerelease: false
+      - name: Upload Installer
+        uses: actions/upload-release-asset@v1
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./ZacksOutliningToolInstaller.msi
+          asset_name: ZacksOutliningToolInstaller.msi
+          asset_content_type: application/octet-stream
