@@ -25,5 +25,3 @@ jobs:
           - First release for new outlining tool.
         draft: false
         prerelease: false
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
