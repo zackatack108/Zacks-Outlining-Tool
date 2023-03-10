@@ -1,4 +1,4 @@
-name: Create Installer
+name: Create Deployment Package
 
 on:
   push:
@@ -6,31 +6,28 @@ on:
       - master
 
 env:
-  APP_NAME: "Zacks Outlining Tool"
-  APP_VERSION: "1.0.0"
-  PRODUCT_NAME: "Zacks Outlining Tool"
-  INSTALLER_NAME: "${PRODUCT_NAME}-${APP_VERSION}-setup.exe"
+  APP_NAME: "ZacksOutliningTool"
+  OUTPUT_ZIP: "${APP_NAME}.zip"
+  BUILD_DIR: "bin/Release"
 
 jobs:
-  build_installer:
+  build:
     runs-on: windows-latest
     steps:
-    - name: Checkout repository
-      uses: actions/checkout@v2
+      - name: Checkout repository
+        uses: actions/checkout@v2
 
-    - name: Install Inno Setup
-      run: |
-        choco install innosetup
-        refreshenv
-        
-    - name: Verify Inno Setup installation
-      run: iscc.exe /?
+      - name: Setup .NET Framework
+        uses: microsoft/setup-dotnet-framework@v1
 
-    - name: Build installer
-      run: iscc.exe Product.iss
+      - name: Build project
+        run: msbuild /p:Configuration=Release
 
-    - name: Upload installer as artifact
-      uses: actions/upload-artifact@v2
-      with:
-        name: ${INSTALLER_NAME}
-        path: ${INSTALLER_NAME}
+      - name: Create deployment package
+        run: |
+          mkdir deployment
+          cp ${BUILD_DIR}/*.dll deployment/
+          cp ${BUILD_DIR}/*.exe deployment/
+          cp ${BUILD_DIR}/*.config deployment/
+          zip -r ${OUTPUT_ZIP} deployment/
+        shell: powershell
