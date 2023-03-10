@@ -1,4 +1,4 @@
-name: Build and Publish
+name: Build and Release Exe
 
 on:
   push:
@@ -15,16 +15,29 @@ jobs:
     - name: Setup MSBuild.exe path
       uses: microsoft/setup-msbuild@v1.0.2
 
-    - name: Build project
-      run: msbuild /p:Configuration=Release /t:Rebuild
+    - name: NuGet restore
+      run: nuget restore "Zacks Outlining Tool.sln"
 
-    - name: Publish project
-      run: |
-        cd bin\Release
-        csc /out:ZacksOutliningTool.exe ZacksOutliningTool.cs
-        
-    - name: Upload artifact
-      uses: actions/upload-artifact@v2
+    - name: Build solution
+      run: msbuild /p:Configuration=Release /t:Rebuild "Zacks Outlining Tool.sln"
+
+    - name: Create Release
+      id: create_release
+      uses: actions/create-release@v1.0.1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
-        name: ZacksOutliningTool
-        path: bin\Release\ZacksOutliningTool.exe
+        tag_name: ${{ github.ref }}
+        release_name: Release ${{ github.ref }}
+        draft: false
+        prerelease: false
+
+    - name: Upload Release Asset
+      uses: actions/upload-release-asset@v1.0.2
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: ./Zacks Outlining Tool/bin/Release/Zacks Outlining Tool.exe
+        asset_name: Zacks Outlining Tool.exe
+        asset_content_type: application/octet-stream
