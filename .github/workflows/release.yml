@@ -22,6 +22,9 @@ jobs:
       run: |
         choco install wixtoolset
         refreshenv
+        
+    - name: Verify WiX Toolset installation
+      run: candle --help
 
     - name: Build installer
       run: |
