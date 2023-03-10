@@ -5,60 +5,31 @@ on:
     branches:
       - master
 
+env:
+  APP_NAME: "Zacks Outlining Tool"
+  APP_VERSION: "1.0.0"
+  PRODUCT_NAME: "Zacks Outlining Tool"
+  INSTALLER_NAME: "${PRODUCT_NAME}-${APP_VERSION}-setup.exe"
+
 jobs:
-  build:
+  build_installer:
     runs-on: windows-latest
     steps:
-    - name: Checkout code
+    - name: Checkout repository
       uses: actions/checkout@v2
 
-    - name: Setup .NET Framework
-      uses: microsoft/setup-dotnet@v1
-      with:
-        dotnet-version: '4.8.1'
-    
     - name: Install WiX Toolset
       run: |
-        [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
-        Invoke-WebRequest "https://github.com/wixtoolset/wix3/releases/download/wix3112rtm/wix311-binaries.zip" -OutFile "wix.zip"
-        Expand-Archive wix.zip -DestinationPath $env:ProgramFiles\WiX
-    
-    - name: Build Setup Project
+        choco install wixtoolset
+        refreshenv
+
+    - name: Build installer
       run: |
-        & "$env:ProgramFiles\WiX\bin\heat.exe" dir "./Zacks Outlining Tool/bin/Release" -nologo -gg -srd -cg MyComponentGroup -dr INSTALLFOLDER -out ./bin/MyProjectFiles.wxs
-        & "$env:ProgramFiles\WiX\bin\candle.exe" -nologo ./Installer/Product.wxs ./bin/MyProjectFiles.wxs
-        & "$env:ProgramFiles\WiX\bin\light.exe" -nologo -ext WixUIExtension -ext WixNetFxExtension ./Installer/Product.wixobj -o "./bin/Zacks Outlining Tool Installer.msi"
-    
-    - name: Create Release
-      id: create_release
-      uses: actions/create-release@v1.0.1
-      with:
-        tag_name: ${{ github.ref }}
-        release_name: Release ${{ github.ref }}
-        body: |
-          Changes in this release:
-          - Add Windows Installer package
-        draft: false
-        prerelease: false
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-    
-    - name: Upload Installer
-      id: upload_installer
+        candle -ext WixNetFxExtension -arch x64 -dAppVersion=${APP_VERSION} -dProductName="${APP_NAME}" Product.wxs
+        light -ext WixNetFxExtension -sval -sice:ICE60 -sice:ICE64 -sice:ICE91 -sice:ICE97 -sice:ICE80 -sice:ICE53 -sice:ICE43 -out ${INSTALLER_NAME} Product.wixobj
+
+    - name: Upload installer as artifact
       uses: actions/upload-artifact@v2
       with:
-        name: Zacks Outlining Tool Installer
-        path: ./bin/Zacks Outlining Tool Installer.msi
-
-    - name: Set Installer Asset ID
-      id: set_asset_id
-      run: echo "::set-output name=installer_asset_id::${{ steps.upload_installer.outputs.artifact_id }}"
-    
-    - name: Attach Installer to Release
-      uses: actions/upload-release-asset@v1
-      with:
-        asset_path: ./bin/Zacks Outlining Tool Installer.msi
-        asset_name: Zacks Outlining Tool Installer.msi
-        asset_content_type: application/octet-stream
-        release_id: ${{ steps.create_release.outputs.release_id }}
-        github_token: ${{ secrets.GITHUB_TOKEN }}
+        name: ${INSTALLER_NAME}
+        path: ${INSTALLER_NAME}
