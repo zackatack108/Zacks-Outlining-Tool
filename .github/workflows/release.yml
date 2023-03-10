@@ -6,28 +6,39 @@ on:
       - master
 
 env:
-  APP_NAME: "ZacksOutliningTool"
-  OUTPUT_ZIP: "${APP_NAME}.zip"
-  BUILD_DIR: "bin/Release"
+  APP_NAME: "Zacks Outlining Tool"
+  APP_VERSION: "1.0.0"
+  DOTNET_VERSION: 4.8.1
 
 jobs:
   build:
     runs-on: windows-latest
+
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v2
+    - uses: actions/checkout@v2
 
-      - name: Setup .NET Framework
-        uses: microsoft/setup-dotnet-framework@v1
+    - name: Setup .NET Framework
+      uses: actions/setup-dotnet@v1
+      with:
+        dotnet-version: ${{ env.DOTNET_VERSION }}
+        include-prerelease: false
+    
+    - name: Restore NuGet packages
+      run: nuget restore ${{ env.APP_NAME }}.sln
 
-      - name: Build project
-        run: msbuild /p:Configuration=Release
+    - name: Build .NET Framework application
+      run: |
+        msbuild /t:Rebuild /p:Configuration=Release /p:TargetFrameworkVersion=v${{ env.DOTNET_VERSION }} /p:AssemblyVersion=${{ env.APP_VERSION }} /p:FileVersion=${{ env.APP_VERSION }} /p:InformationalVersion=${{ env.APP_VERSION }} /p:OutputPath=bin/Release ${{ env.APP_NAME }}.csproj
 
-      - name: Create deployment package
-        run: |
-          mkdir deployment
-          cp ${BUILD_DIR}/*.dll deployment/
-          cp ${BUILD_DIR}/*.exe deployment/
-          cp ${BUILD_DIR}/*.config deployment/
-          zip -r ${OUTPUT_ZIP} deployment/
-        shell: powershell
+    - name: Create Zip Package
+      uses: actions/create-release@v1
+      with:
+        tag_name: v${{ env.APP_VERSION }}
+        release_name: Release v${{ env.APP_VERSION }}
+        body: 'Release v${{ env.APP_VERSION }}'
+        draft: false
+        prerelease: false
+        files: |
+          ./bin/Release/${{ env.APP_NAME }}.exe
+          ./bin/Release/*.dll
+          ./bin/Release/*.config
