@@ -1,36 +1,64 @@
-name: Build and Package Installer
+name: Create Installer
+
 on:
   push:
-    branches: [ master ]
-  workflow_dispatch:
+    branches:
+      - master
 
 jobs:
   build:
     runs-on: windows-latest
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v2
+    - name: Checkout code
+      uses: actions/checkout@v2
 
-      - name: Setup .NET Framework 4.8.1
-        uses: microsoft/setup-dotnet@v1.7.2
-        with:
-          dotnet-version: '4.8.1'
+    - name: Setup .NET Framework
+      uses: microsoft/setup-dotnet@v1
+      with:
+        dotnet-version: '4.8.x'
+    
+    - name: Install WiX Toolset
+      run: |
+        [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+        Invoke-WebRequest "https://github.com/wixtoolset/wix3/releases/download/wix3112rtm/wix311-binaries.zip" -OutFile "wix.zip"
+        Expand-Archive wix.zip -DestinationPath $env:ProgramFiles\WiX
+    
+    - name: Build Setup Project
+      run: |
+        & "$env:ProgramFiles\WiX\bin\heat.exe" dir "./Zacks Outlining Tool/bin/Release" -nologo -gg -srd -cg MyComponentGroup -dr INSTALLFOLDER -out ./bin/MyProjectFiles.wxs
+        & "$env:ProgramFiles\WiX\bin\candle.exe" -nologo ./Installer/Product.wxs ./bin/MyProjectFiles.wxs
+        & "$env:ProgramFiles\WiX\bin\light.exe" -nologo -ext WixUIExtension -ext WixNetFxExtension ./Installer/Product.wixobj -o "./bin/Zacks Outlining Tool Installer.msi"
+    
+    - name: Create Release
+      id: create_release
+      uses: actions/create-release@v1.0.1
+      with:
+        tag_name: ${{ github.ref }}
+        release_name: Release ${{ github.ref }}
+        body: |
+          Changes in this release:
+          - Add Windows Installer package
+        draft: false
+        prerelease: false
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    
+    - name: Upload Installer
+      id: upload_installer
+      uses: actions/upload-artifact@v2
+      with:
+        name: Zacks Outlining Tool Installer
+        path: ./bin/Zacks Outlining Tool Installer.msi
 
-      - name: Restore NuGet packages
-        run: nuget restore
-
-      - name: Build project
-        run: msbuild /p:Configuration=Release /t:Rebuild
-
-      - name: Package installer
-        uses: jquintozamora/action-download-artifact@v2.1.1
-        with:
-          name: Installer
-          repo: ${{ github.repository }}
-          ref: ${{ github.sha }}
-          token: ${{ secrets.GITHUB_TOKEN }}
-          workflow: Installer.yml
-          path: ./installer
-
-      - name: Create installer
-        run: ./installer/setup.exe /S
+    - name: Set Installer Asset ID
+      id: set_asset_id
+      run: echo "::set-output name=installer_asset_id::${{ steps.upload_installer.outputs.artifact_id }}"
+    
+    - name: Attach Installer to Release
+      uses: actions/upload-release-asset@v1
+      with:
+        asset_path: ./bin/Zacks Outlining Tool Installer.msi
+        asset_name: Zacks Outlining Tool Installer.msi
+        asset_content_type: application/octet-stream
+        release_id: ${{ steps.create_release.outputs.release_id }}
+        github_token: ${{ secrets.GITHUB_TOKEN }}
