@@ -18,18 +18,16 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v2
 
-    - name: Install WiX Toolset
+    - name: Install Inno Setup
       run: |
-        choco install wixtoolset
+        choco install innosetup
         refreshenv
         
-    - name: Verify WiX Toolset installation
-      run: candle.exe --help
+    - name: Verify Inno Setup installation
+      run: iscc.exe /?
 
     - name: Build installer
-      run: |
-        candle.exe -ext WixNetFxExtension -arch x64 -dAppVersion=${APP_VERSION} -dProductName="${APP_NAME}" Product.wxs
-        light -ext WixNetFxExtension -sval -sice:ICE60 -sice:ICE64 -sice:ICE91 -sice:ICE97 -sice:ICE80 -sice:ICE53 -sice:ICE43 -out ${INSTALLER_NAME} Product.wixobj
+      run: iscc.exe Product.iss
 
     - name: Upload installer as artifact
       uses: actions/upload-artifact@v2
