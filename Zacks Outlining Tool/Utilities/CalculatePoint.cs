@@ -1,6 +1,9 @@
 ﻿using System;
+using System.Drawing;
+using System.Drawing.Drawing2D;
+using System.IO;
 using System.Threading.Tasks;
-using IronOcr;
+using Tesseract;
 
 namespace Zacks_Outlining_Tool.Utilities;
 
@@ -13,11 +16,33 @@ public class CalculatePoint
 
         ScreenCapture screen = new ScreenCapture();
         var img = screen.CaptureWindow(hWnd);
+        Bitmap image = new Bitmap(img);
 
-        OcrResult result = await new IronTesseract().ReadAsync(img);
-        var text = result.Text;
+        int newWidth = 2 * image.Width;
+        int newHeight = 2 * image.Height;
 
-        var mapLength = getBetween(text, "Length:", "| Meters");
+        Bitmap resizedImg = new Bitmap(newWidth, newHeight);
+        using (Graphics g = Graphics.FromImage(resizedImg))
+        {
+            g.InterpolationMode = InterpolationMode.HighQualityBicubic;
+            g.DrawImage(img, new Rectangle(0, 0, newWidth, newHeight));
+        }
+
+        string text = null;
+        using (var engine = new TesseractEngine("./tessdata", "eng", EngineMode.Default))
+        {
+            using(var page = engine.Process(resizedImg, PageSegMode.Auto))
+            {
+                text = page.GetText();
+            }
+        }
+
+        if (text == null)
+        {
+            return "Error: Unable to read values";
+        }
+
+        var mapLength = getBetween(text, "Length:", "Meters");
         var heading = getBetween(text, "Heading:", "degrees");
 
         if(mapLength == null && heading == null)
@@ -27,6 +52,7 @@ public class CalculatePoint
         else
         {
             mapLength = mapLength.Replace(",", "");
+            mapLength = mapLength.Replace("|", "");
             heading = heading.Replace(",", "");
 
             var rulerData = $"{mapLength} {heading}";
@@ -48,5 +74,4 @@ public class CalculatePoint
         return null;
     }
 
-}
 }

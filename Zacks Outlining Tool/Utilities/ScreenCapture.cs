@@ -54,4 +54,3 @@ class GDI32
     [DllImport("gdi32.dll")]
     public static extern IntPtr SelectObject(IntPtr hDC, IntPtr hObject);
 }
-}
