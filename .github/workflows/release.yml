@@ -3,12 +3,12 @@ name: Create Deployment Package
 on:
   push:
     branches:
-      - master
+      - Master
 
 env:
   APP_NAME: "Zacks Outlining Tool"
-  APP_VERSION: "1.0.0"
-  DOTNET_VERSION: 4.8.1
+  APP_VERSION: "1.0.1"
+  DOTNET_VERSION: 7.0
 
 jobs:
   build:
@@ -17,14 +17,14 @@ jobs:
     steps:
     - uses: actions/checkout@v2
 
-    - name: Setup MSBuild.exe path
-      uses: microsoft/setup-msbuild@v1.0.2
+    - name: Setup .Net SDK path
+      uses: actions/setup-dotnet@v1
 
     - name: NuGet restore
-      run: nuget restore "${{ env.APP_NAME }}.sln"
+      run: dotnet restore "${{ env.APP_NAME }}.sln"
 
     - name: Build solution
-      run: msbuild /p:Configuration=Release /t:Rebuild "${{ env.APP_NAME }}.sln"
+      run: dotnet build "${{ env.APP_NAME }}.sln" --configuration Release
 
     - name: Create Release
       id: create_release
@@ -37,16 +37,6 @@ jobs:
         release_name: Release v${{ env.APP_VERSION }}
         draft: false
         prerelease: false
-        
-    - name: Upload Release Asset - Exe
-      uses: actions/upload-release-asset@v1.0.2
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: "./${{ env.APP_NAME }}/bin/Release/${{ env.APP_NAME }}.exe"
-        asset_name: "${{ env.APP_NAME }}.exe"
-        asset_content_type: application/octet-stream
         
     - name: Create Zip File
       run: 7z a -tzip "${{ env.APP_NAME }}_${{ env.APP_VERSION }}.zip" "./${{ env.APP_NAME }}/bin/Release/*.*"
