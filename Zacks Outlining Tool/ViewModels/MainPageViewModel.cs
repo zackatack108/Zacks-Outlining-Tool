@@ -1,4 +1,7 @@
-﻿using CommunityToolkit.Mvvm.Input;
+﻿using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
+using System.Collections.ObjectModel;
+using System.Threading.Tasks;
 using Zacks_Outlining_Tool.Utilities;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
@@ -7,67 +10,47 @@ using System.Windows.Input;
 
 namespace Zacks_Outlining_Tool.ViewModels
 {
-    public partial class MainPageViewModel : INotifyPropertyChanged
+    public partial class MainPageViewModel : ObservableObject
     {
-        public RelayCommand<string> RadioButtonCommand { get; }
+        private string origin = "";
 
-        public MainPageViewModel()
+        [ObservableProperty]
+        private bool connectPoints = false;
+
+        public ObservableCollection<string> Output { get; set; } = new();
+
+        public string Origin
         {
-            PointCommand = new RelayCommand(ExecutePoint, CanExecutePoint);
-            RadioButtonCommand = new RelayCommand<string>(radioButtonClick);
+            get => origin;
+            set
+            {
+                SetProperty(ref origin, value);
+                CalculatPointCommand.NotifyCanExecuteChanged();
+            }
         }
-
-        public ICommand PointCommand { get; set; }
-
-        private bool CanExecutePoint(object parameter)
+        private bool CanCalculate()
         {
-            if (Origin != "")
+            if(Origin != "")
             {
                 return true;
             }
             return false;
         }
 
-        private void ExecutePoint(object parameter)
+        [RelayCommand(CanExecute = nameof(CanCalculate))]
+        public async Task CalculatPoint()
         {
             CalculatePoint point = new CalculatePoint();
-            var pointData = point.FindPoint();
+            var pointData = await point.FindPoint();
             Output.Add($"Ruler Values: {pointData}");
             var mc = new MinecraftCommands();
-            var command = mc.SendPointCommand(Origin, pointData);
+            var command = await mc.SendPointCommand(Origin, pointData);
             Output.Add($"Command ran: {command}");
-            if (connectPoints == true)
+            if (ConnectPoints == true)
             {
-                var connect = mc.ConnectPoints();
-                Output.Add($"Command ran: {command}");
+                var connect = await mc.ConnectPoints();
+                Output.Add($"Command ran: {connect}");
             }
-        }
-
-        private string origin = "";
-        public string Origin
-        {
-            get { return origin; }
-            set
-            {
-                if (value == origin)
-                    return;
-                origin = value;
-                OnPropertyChanged();
-            }
-        }
-
-        private ObservableCollection<string> output = new ObservableCollection<string>();
-        public ObservableCollection<string> Output
-        {
-            get { return output; }
-        }
-
-        public event PropertyChangedEventHandler PropertyChanged;
-
-        void OnPropertyChanged([CallerMemberName] string propertyName = null)
-        {
-            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
-        }
 
         private bool connectPoints = false;
 

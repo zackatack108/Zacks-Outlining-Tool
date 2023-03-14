@@ -1,40 +1,53 @@
 ﻿using System;
+using System.Threading.Tasks;
 using System.Windows.Forms;
 
-namespace Zacks_Outlining_Tool.Utilities
+namespace Zacks_Outlining_Tool.Utilities;
+
+public class MinecraftCommands
 {
-    public class MinecraftCommands
+
+    public async Task<string> SendPointCommand(string origin, string rulerData)
     {
-
-        public string SendPointCommand(string origin, string rulerData)
+        IntPtr minecraftWindow = User32.FindWindow("GLFW30", null);
+        if (minecraftWindow == IntPtr.Zero)
         {
-            IntPtr minecraftWindow = User32.FindWindow("GLFW30", null);
-            User32.SetForegroundWindow(minecraftWindow);
+            return "Error: Unable to find Minecraft window";
+        }
+        User32.SetForegroundWindow(minecraftWindow);
             //var minecraft = User32.GetFocus();
 
-            string command = $"/point plot {origin} {rulerData}";
+        string command = $"/point plot {origin} {rulerData}";
 
-            SendKeys.SendWait($"{command}");
-            SendKeys.SendWait("{ENTER}");
-            SendKeys.SendWait("t");
+        await Task.Delay(50);
+        SendKeys.SendWait($"{command}");
+        SendKeys.SendWait("{ENTER}");
+        await Task.Delay(50);
+        SendKeys.SendWait("t");
 
-            return command;
-        }
-
-        public string ConnectPoints()
-        {
-            IntPtr minecraftWindow = User32.FindWindow("GLFW30", null);
-            User32.SetForegroundWindow(minecraftWindow);
-            //var minecraft = User32.GetFocus();
-
-            string command = "/point connect";
-
-            SendKeys.SendWait($"{command}");
-            SendKeys.SendWait("{ENTER}");
-            SendKeys.SendWait("t");
-
-            return command;
-        }
-
+        return command;
     }
+
+    public async Task<string> ConnectPoints()
+    {
+        IntPtr minecraftWindow = User32.FindWindow("GLFW30", null);
+        if (minecraftWindow == IntPtr.Zero)
+        {
+            return "Error: Unable to find Minecraft window";
+        }
+        User32.SetForegroundWindow(minecraftWindow);
+            //var minecraft = User32.GetFocus();
+
+        string command = "/point connect";
+
+        await Task.Delay(50);
+        SendKeys.SendWait($"{command}");
+        SendKeys.SendWait("{ENTER}");
+        await Task.Delay(50);
+        SendKeys.SendWait("t");
+
+        return command;
+    }
+
+}
 }
